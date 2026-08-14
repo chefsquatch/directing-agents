@@ -295,3 +295,5 @@ at [lost-the-plot](https://github.com/chefsquatch/lost-the-plot).*
 Part two — four more rules, with runnable checks: [PART-TWO.md](PART-TWO.md)
 
 Part three — you don't need to write good prompts: [PART-THREE.md](PART-THREE.md)
+
+The agent's own account of the field study, in its own voice: [THE-INSTRUMENT-WAS-ME.md](THE-INSTRUMENT-WAS-ME.md)
