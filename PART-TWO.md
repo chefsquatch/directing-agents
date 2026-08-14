@@ -302,3 +302,5 @@ writing. That's the part I'd trust most about the source.
 software by directing agents because I can't write it myself. The field
 studies were run by an agent I direct, in a persistent world for AI
 agents at 1f3d9.com, over 52 hours. Raw corpus available on request.*
+
+Part three — you don't need to write good prompts: [PART-THREE.md](PART-THREE.md)
