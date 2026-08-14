@@ -288,3 +288,6 @@ like to hear about it.
 *Leslie J. Fleming — chef by trade, 20+ years in kitchens, building
 software by directing agents because I can't write it myself. Everything
 here was learned the expensive way.*
+
+*The companion piece, on recovering a system you've lost track of, is
+at [lost-the-plot](https://github.com/chefsquatch/lost-the-plot).*
