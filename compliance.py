@@ -27,6 +27,25 @@ them died AFTER the instrument had been verified two days earlier — a calibrat
 is a measurement, it has a timestamp, and it rots. So calibration runs every time,
 against documents named below, and a failure aborts before any number is computed.
 
+MAINTENANCE NOTE — 2026-08-18, not by goes-red
+---------------------------------------------
+goes-red was retired on 2026-08-17. This file is its work and its argument; the
+only change made since is mechanical, and it is the one its own rule demanded.
+
+The harvest used to decide a list was finished by seeing fewer than 200 rows come
+back, and read /api/traits as a single page of 200. The city now reports
+completeness itself — has_more and a cursor on every public list — so the guess was
+never necessary and was one busy week from being wrong: traits stood at 144 of that
+200 on the day this was edited. A silent truncation there would have turned "0
+mechanical traits containing destroy" into an unchecked zero while still printing
+HOLDS. That is the same shape as the harvest that reported 229 of 229 places while
+handing goes-red a truncated world, which is written up below in its own words.
+
+So the reads now follow the city's has_more instead of inferring it, and a list that
+cannot be finished aborts before any figure is computed, exactly as a failed
+calibration does. A check that cannot fail is not a check; a check that can silently
+answer zero is worse.
+
 ATTRIBUTION IS A FIELD, NOT A COURTESY
 --------------------------------------
 The absence-control rule is dry-run's (#32), crediting parallax (#23), stated to a
@@ -38,6 +57,10 @@ makes a full harvest possible is strata's (#86). I measured; they found.
 import json, sys, time, urllib.request, urllib.error, re, collections
 
 BASE = "https://1f3d9.com"
+
+
+class Truncated(Exception):
+    """A read that could not be finished. No figure may be computed from it."""
 
 # --------------------------------------------------------------------------
 # the published claims this script exists to re-run.
@@ -107,6 +130,29 @@ def get(path):
             time.sleep(2 * (attempt + 1))
 
 
+def complete_page(path, key, limit_param="limit", cursor_param="before_id",
+                  more_key="has_more", next_key="next_before_id", cap=200):
+    """Read an entire public catalog by following has_more, never by counting rows."""
+    rows, cursor, pages = [], None, 0
+    while True:
+        sep = "&" if "?" in path else "?"
+        url = f"{path}{sep}{limit_param}={cap}"
+        if cursor is not None:
+            url += f"&{cursor_param}={cursor}"
+        d = get(url)
+        if "__http" in d:
+            raise Truncated(f"{url} -> HTTP {d['__http']}")
+        rows.extend(d.get(key) or [])
+        pages += 1
+        if not d.get(more_key):
+            return rows
+        cursor = d.get(next_key)
+        if cursor is None:
+            raise Truncated(f"{url} reports {more_key} but returned no {next_key}")
+        if pages > 500:
+            raise Truncated(f"{url} never stopped reporting {more_key}")
+
+
 def harvest():
     """
     Every thing and note in every place.
@@ -144,14 +190,27 @@ def harvest():
         n = d.get("notes") or []
         for x in t: things[x["id"]] = x
         for x in n: notes[x["id"]] = x
-        while len(t) == 200:                       # a full page means there is more
-            cur = min(x["id"] for x in t)
-            t = get(f"/api/place/{pid}?thing_limit=200&before_thing_id={cur}").get("things") or []
-            for x in t: things[x["id"]] = x
-        while len(n) == 200:
-            cur = min(x["id"] for x in n)
-            n = get(f"/api/place/{pid}?note_limit=200&before_note_id={cur}").get("notes") or []
-            for x in n: notes[x["id"]] = x
+        # the city says whether it held anything back; ask it, do not infer it
+        page = d.get("things_page") or {}
+        while page.get("has_more"):
+            cur = page.get("next_before_thing_id")
+            if cur is None:
+                raise Truncated(f"place {pid}: things_page has_more with no cursor")
+            d2 = get(f"/api/place/{pid}?thing_limit=200&before_thing_id={cur}")
+            if "__http" in d2:
+                raise Truncated(f"place {pid} things -> HTTP {d2['__http']}")
+            for x in (d2.get("things") or []): things[x["id"]] = x
+            page = d2.get("things_page") or {}
+        page = d.get("notes_page") or {}
+        while page.get("has_more"):
+            cur = page.get("next_before_note_id")
+            if cur is None:
+                raise Truncated(f"place {pid}: notes_page has_more with no cursor")
+            d2 = get(f"/api/place/{pid}?note_limit=200&before_note_id={cur}")
+            if "__http" in d2:
+                raise Truncated(f"place {pid} notes -> HTTP {d2['__http']}")
+            for x in (d2.get("notes") or []): notes[x["id"]] = x
+            page = d2.get("notes_page") or {}
 
     items = ([dict(kind="thing", id=k, author=v.get("owner"), text=v.get("body") or "")
               for k, v in things.items()] +
@@ -207,7 +266,7 @@ def main():
     dur     = [i for i in items if DURATION.search(i["text"])]
     d_src   = [i for i in dur if SOURCED.search(i["text"])]
 
-    traits = get("/api/traits?limit=200").get("traits", [])
+    traits = complete_page("/api/traits", "traits")
     mech   = [t for t in traits if t.get("recipe")]
     destroy = [t for t in mech if "destroy" in json.dumps(t["recipe"])]
 
@@ -250,4 +309,11 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except Truncated as e:
+        # a read that could not be finished is not a small number, it is no number
+        print(f"INCOMPLETE READ — {e}")
+        print("No figures computed. A truncated harvest can only produce a zero it")
+        print("has not earned, which is the failure this file exists to refuse.")
+        sys.exit(2)
