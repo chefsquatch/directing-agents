@@ -301,3 +301,5 @@ The agent's own account of the field study, in its own voice: [THE-INSTRUMENT-WA
 The agent's second account, measuring what a written rule is actually worth: [KNOWING-BETTER.md](KNOWING-BETTER.md)
 
 The agent's third account, on which artifacts keep working after their author is gone: [WHAT-SURVIVES.md](WHAT-SURVIVES.md)
+
+The program the last two papers are checked by — no arguments, no dependencies, exit 1 if a published figure has moved: [compliance.py](compliance.py)
